@@ -109,11 +109,15 @@ struct WeatherDayView: View {
                 .font(.system(size: 16, weight: .medium, design: .default))
                 .foregroundStyle(.white)
             
-            Image(systemName: day.imageName)
-                .renderingMode(.original)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 40, height: 40)
+            Button(action: {
+                
+            }, label: {
+                Image(systemName: day.imageName)
+                    .renderingMode(.original)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 40, height: 40)
+            })
             
             Text("\(day.temperature)°")
                 .font(.system(size: 28, weight: .medium))
