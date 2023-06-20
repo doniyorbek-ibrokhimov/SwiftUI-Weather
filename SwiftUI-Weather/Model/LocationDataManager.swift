@@ -4,6 +4,8 @@ import CoreLocation
 class LocationDataManager : NSObject, ObservableObject, CLLocationManagerDelegate {
     var locationManager = CLLocationManager()
     @Published var authorizationStatus: CLAuthorizationStatus?
+    @Published var longtitude = Double()
+    @Published var latitude = Double()
     
     override init() {
         super.init()
@@ -40,11 +42,24 @@ class LocationDataManager : NSObject, ObservableObject, CLLocationManagerDelegat
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         // Insert code to handle location updates
+        let latitude = manager.location?.coordinate.latitude.description
+        
+        let longtitude = manager.location?.coordinate.longitude.description
+        
+        guard let latitude = latitude, let longtitude = longtitude else {
+            fatalError("error with long and lat strings")
+        }
+        
+        guard let latitude = Double(latitude), let longtitude = Double(longtitude) else {
+            fatalError("error converting long and lat to double")
+        }
+        
+        self.latitude = latitude
+        self.longtitude = longtitude
     }
     
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         print("error: \(error.localizedDescription)")
     }
-    
     
 }

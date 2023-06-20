@@ -37,37 +37,11 @@ struct ContentView: View {
             
         }
         .onAppear {
+            let longtitude  = locationDataManager.longtitude
+            let latitude = locationDataManager.latitude
             
-            switch locationDataManager.locationManager.authorizationStatus {
-            case .authorizedWhenInUse:  // Location services are available.
-                // Insert code here of what should happen when Location services are authorized
-                let latitude = locationDataManager.locationManager.location?.coordinate.latitude.description
-                
-                let longtitude = locationDataManager.locationManager.location?.coordinate.longitude.description
-                
-                guard let latitude = latitude, let longtitude = longtitude else {
-                    fatalError("error with long and lat strings")
-                }
-                
-                guard let latitude = Double(latitude), let longtitude = Double(longtitude) else {
-                    fatalError("error converting long and lat to double")
-                }
-                
-                
-                Task {
-                   await viewModel.fetchWeatherData(longtitude: longtitude, latitude: latitude)
-                }
-                
-                
-            case .restricted, .denied:
-                // Insert code here of what should happen when Location services are NOT authorized
-                print("Current location data was restricted or denied.")
-            case .notDetermined:        // Authorization not determined yet.
-
-                print("Loading")
-            default:
-
-                print("Loading")
+            Task {
+               await viewModel.fetchWeatherData(longtitude: longtitude, latitude: latitude)
             }
         }
     }
