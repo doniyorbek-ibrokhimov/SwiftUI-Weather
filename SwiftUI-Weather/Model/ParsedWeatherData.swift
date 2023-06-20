@@ -10,9 +10,10 @@ import Foundation
 // list[0].main.temp
 // list[0].weather[0].id
 // list[0].dt_txt
+// city.name
 struct ParsedWeatherData: Codable {
     let list: [List]
-    
+    let city: City
 }
 
 struct List: Codable {
@@ -30,3 +31,8 @@ struct Weather: Codable {
 struct Main: Codable {
     let temp: Double
 }
+
+struct City: Codable {
+    let name: String
+}
+

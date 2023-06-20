@@ -6,3 +6,10 @@
 //
 
 import Foundation
+
+struct WeatherData {
+    let conditionId: Int
+    let cityName: String
+    let temperature: Int
+    let date: String
+}
