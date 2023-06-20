@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import CoreLocation
 
 private let weekDays = [
     1 : "Monday",
@@ -19,22 +18,48 @@ private let weekDays = [
 ]
 
 class ViewModel: ObservableObject {
-    
+    //MARK: - Properties
     @Published var weatherDataArray = [WeatherData]()
+    private let urlString = "https://api.openweathermap.org/data/2.5/forecast?"
     
-    func getWeatherData(cityName: String) async {
-//        https://api.openweathermap.org/data/2.5/forecast?q=Tashkent&appid=4fe76d6d3ca3d145536320183e9e51a0
+    //MARK: - Methods
+     func fetchWeatherDate(with cityName: String) async {
+        guard let url = URL(string: urlString) else  { fatalError("Error with urlString") }
         
-        guard let url = URL(string: "https://api.openweathermap.org/data/2.5/forecast") else { fatalError("Wrong url string") }
-        
-        guard var urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: true) else { fatalError("Unable to resolve url components") }
+        guard var urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: true) else {
+            fatalError("Unable to resolve url components")
+        }
         
         urlComponents.queryItems = [
             URLQueryItem(name: "q", value: cityName),
-            URLQueryItem(name: "appid", value: "4fe76d6d3ca3d145536320183e9e51a0")
+            URLQueryItem(name: "appid", value: "4fe76d6d3ca3d145536320183e9e51a0"),
         ]
         
-        guard let endpoint = urlComponents.url else { fatalError("Unable to get final url") }
+        await getWeatherData(with: urlComponents.url)
+    }
+    
+     func fetchWeatherData(longtitude: Double, latitude: Double) async {
+        guard let url = URL(string: urlString) else  { fatalError("Error with urlString") }
+        
+        guard var urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: true) else {
+            fatalError("Unable to resolve url components")
+        }
+        
+        urlComponents.queryItems = [
+            URLQueryItem(name: "lat", value: "\(latitude)"),
+            URLQueryItem(name: "lon", value: "\(longtitude)"),
+            URLQueryItem(name: "appid", value: "4fe76d6d3ca3d145536320183e9e51a0"),
+        ]
+        
+        await getWeatherData(with: urlComponents.url)
+    }
+    
+    
+    private func getWeatherData(with endpoint: URL?) async {
+        //        https://api.openweathermap.org/data/2.5/forecast?q=Tashkent&appid=4fe76d6d3ca3d145536320183e9e51a0
+        
+        //        api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={API key}
+        guard let endpoint = endpoint else { fatalError("Error unwrapping endpoint") }
         
         do {
             let (data, response) = try await URLSession.shared.data(from: endpoint)
@@ -51,7 +76,7 @@ class ViewModel: ObservableObject {
         }
     }
     
-    func extractWeatherData(from parsedWeatherData: ParsedWeatherData) {
+    private func extractWeatherData(from parsedWeatherData: ParsedWeatherData) {
         let cityName = parsedWeatherData.city.name
         
         var weatherDataArray = [WeatherData]()

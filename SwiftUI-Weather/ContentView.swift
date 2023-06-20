@@ -11,8 +11,9 @@ import SwiftUI
 struct ContentView: View {
     
     @State private var isNight = false
-    @State private var cityName = "Tashkent"
+    @State private var cityName = String()
     @StateObject private var viewModel = ViewModel()
+    @StateObject var locationDataManager = LocationDataManager()
     
     @State var days: [DayWeather] = []
     var body: some View {
@@ -26,11 +27,48 @@ struct ContentView: View {
                 
                 MainWeatherStatusView(imageName: "cloud.sun.fill", temperature: 25)
 
+               
                 DaysView(viewModel: viewModel)
                 
+       
                 Spacer()
+                
             }
             
+        }
+        .onAppear {
+            
+            switch locationDataManager.locationManager.authorizationStatus {
+            case .authorizedWhenInUse:  // Location services are available.
+                // Insert code here of what should happen when Location services are authorized
+                let latitude = locationDataManager.locationManager.location?.coordinate.latitude.description
+                
+                let longtitude = locationDataManager.locationManager.location?.coordinate.longitude.description
+                
+                guard let latitude = latitude, let longtitude = longtitude else {
+                    fatalError("error with long and lat strings")
+                }
+                
+                guard let latitude = Double(latitude), let longtitude = Double(longtitude) else {
+                    fatalError("error converting long and lat to double")
+                }
+                
+                
+                Task {
+                   await viewModel.fetchWeatherData(longtitude: longtitude, latitude: latitude)
+                }
+                
+                
+            case .restricted, .denied:
+                // Insert code here of what should happen when Location services are NOT authorized
+                print("Current location data was restricted or denied.")
+            case .notDetermined:        // Authorization not determined yet.
+
+                print("Loading")
+            default:
+
+                print("Loading")
+            }
         }
     }
 }
@@ -42,7 +80,7 @@ struct DaysView: View {
     var body: some View {
         HStack {
             ForEach(viewModel.weatherDataArray, id: \.self) { weatherData in
-
+                
                 let day = DayWeather(dayOfWeek: weatherData.weekday, imageName: weatherData.conditionName, temperature: weatherData.temperatureInCelcius)
                 
                 WeatherDayView(day: day)
@@ -52,7 +90,6 @@ struct DaysView: View {
 }
 
 struct SearchView: View {
-//    @Binding var isNight: Bool
     @Binding var cityName: String
     @Binding var days: [DayWeather]
     var viewModel: ViewModel
@@ -68,7 +105,7 @@ struct SearchView: View {
             
             Button {
                 Task {
-                    await viewModel.getWeatherData(cityName: cityName)
+                    await viewModel.fetchWeatherDate(with: cityName)
                 }
                 
             } label: {
