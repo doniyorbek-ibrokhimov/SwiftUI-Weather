@@ -6,6 +6,17 @@
 //
 
 import Foundation
+import CoreLocation
+
+private let weekDays = [
+    1 : "Monday",
+    2 : "Tuesday",
+    3 : "Wednesday",
+    4 : "Thursday",
+    5 : "Friday",
+    6 : "Saturday",
+    7 : "Sunday"
+]
 
 class ViewModel: ObservableObject {
     
@@ -24,8 +35,6 @@ class ViewModel: ObservableObject {
         ]
         
         guard let endpoint = urlComponents.url else { fatalError("Unable to get final url") }
-        
-        
         
         do {
             let (data, response) = try await URLSession.shared.data(from: endpoint)
@@ -53,19 +62,39 @@ class ViewModel: ObservableObject {
         
             let temperature = Int(parsedWeatherData.list[i].main.temp)
             let conditionId = parsedWeatherData.list[i].weather[0].id
-            let date = parsedWeatherData.list[i].dt_txt
             
-            let weatherData = WeatherData(conditionId: conditionId, cityName: cityName, temperature: temperature, date: date)
+            let date = parsedWeatherData.list[i].dt_txt
+            let weekday = getWeekday(dateString: date)
+            
+            let weatherData = WeatherData(conditionId: conditionId, cityName: cityName, temperature: temperature, weekday: weekday)
             
             weatherDataArray.append(weatherData)
             
             i += 8
         }
+        
         DispatchQueue.main.async {
             self.weatherDataArray = weatherDataArray
         }
+        
     }
     
+    private func getWeekday(dateString: String) -> String {
+        let correctDateString = dateString[0...9]
+        
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        
+        let date = formatter.date(from: correctDateString)
+        
+        guard let date = date else { fatalError("Error converting string to date") }
+        
+        let weekday = Calendar.current.component(.weekday, from: date)
+        
+        guard let weekday = weekDays[weekday] else { fatalError("Error getting weekday") }
+        
+        return weekday
+    }
 
     
 }
