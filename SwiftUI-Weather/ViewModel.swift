@@ -7,7 +7,17 @@
 
 import Foundation
 
-private let weekDays = [
+enum Weekdays {
+    case monday
+    case tuesday
+    case wednesday
+    case thursday
+    case friday
+    case saturday
+    case sunday
+}
+
+private let weekdays = [
     1 : "Monday",
     2 : "Tuesday",
     3 : "Wednesday",
@@ -19,11 +29,15 @@ private let weekDays = [
 
 class ViewModel: ObservableObject {
     //MARK: - Properties
-    @Published var weatherDataArray = [WeatherData]()
+    var weatherDataCollection: [String : [WeatherData]] = [:]
+    
+    @Published var dailyWeatherData: [WeatherData] = []
+    @Published var weeklyWeatherData: [WeatherData] = []
+    
     private let urlString = "https://api.openweathermap.org/data/2.5/forecast?"
     
     //MARK: - Methods
-     func fetchWeatherDate(with cityName: String) async {
+    func fetchWeatherData(with cityName: String) async {
         guard let url = URL(string: urlString) else  { fatalError("Error with urlString") }
         
         guard var urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: true) else {
@@ -34,7 +48,6 @@ class ViewModel: ObservableObject {
             URLQueryItem(name: "q", value: cityName),
             URLQueryItem(name: "appid", value: "4fe76d6d3ca3d145536320183e9e51a0"),
         ]
-        
         await getWeatherData(with: urlComponents.url)
     }
     
@@ -64,43 +77,58 @@ class ViewModel: ObservableObject {
         do {
             let (data, response) = try await URLSession.shared.data(from: endpoint)
             
-            guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else { fatalError("Wrong status code") }
-            
+            guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+                fatalError("guard catched the error")
+            }
+
             let decoder = JSONDecoder()
             let parsedWeatherData = try decoder.decode(ParsedWeatherData.self, from: data)
             extractWeatherData(from: parsedWeatherData)
-            
         }
         catch {
             fatalError("Error: \(error.localizedDescription)")
         }
     }
-    
+
     private func extractWeatherData(from parsedWeatherData: ParsedWeatherData) {
-        let cityName = parsedWeatherData.city.name
+        var weatherDataCollection: [String : [WeatherData]] = [:]
         
-        var weatherDataArray = [WeatherData]()
-        
-        var i = 3
-        
-        while i < parsedWeatherData.list.count {
-        
-            let temperature = Int(parsedWeatherData.list[i].main.temp)
-            let conditionId = parsedWeatherData.list[i].weather[0].id
-            
-            let date = parsedWeatherData.list[i].dt_txt
+        parsedWeatherData.list.forEach { weatherData in
+            let temperature = Int(weatherData.main.temp)
+            let conditionId = weatherData.weather[0].id
+            let date = weatherData.dt_txt
             let weekday = getWeekday(dateString: date)
             
-            let weatherData = WeatherData(conditionId: conditionId, cityName: cityName, temperature: temperature, weekday: weekday)
-            
-            weatherDataArray.append(weatherData)
-            
-            i += 8
+            let weatherData = WeatherData(conditionId: conditionId, temperature: temperature, weekday: weekday)
+
+            if weatherDataCollection[weekday] != nil {
+                weatherDataCollection[weekday]! += [weatherData]
+            } else {
+                weatherDataCollection[weekday] = [weatherData]
+            }
+        }
+
+        DispatchQueue.main.async {
+            self.weatherDataCollection = weatherDataCollection
+        }
+        getWeeklyWeatherData()
+    }
+    
+    func getDailyWeatherData(weekday: String) {
+        // assign the values of weatherDataCollection to dailyWeatherData
+        guard let dailyWeatherData = weatherDataCollection[weekday] else { fatalError("Error getting daily weather data") }
+        self.dailyWeatherData = dailyWeatherData
+    }
+    
+    func getWeeklyWeatherData() {
+        // add every 3rd value of weatherDataCollection to weeklyWeatherData
+        var weeklyWeatherData: [WeatherData] = []
+        
+        for (_, weatherData) in weatherDataCollection {
+            weeklyWeatherData.append(weatherData[2])
         }
         
-        DispatchQueue.main.async {
-            self.weatherDataArray = weatherDataArray
-        }
+        self.weeklyWeatherData = weeklyWeatherData
         
     }
     
@@ -116,10 +144,8 @@ class ViewModel: ObservableObject {
         
         let weekday = Calendar.current.component(.weekday, from: date)
         
-        guard let weekday = weekDays[weekday] else { fatalError("Error getting weekday") }
+        guard let weekday = weekdays[weekday] else { fatalError("Error getting weekday") }
         
         return weekday
     }
-
-    
 }

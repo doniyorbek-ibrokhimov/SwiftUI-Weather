@@ -9,12 +9,12 @@ import Foundation
 
 struct WeatherData: Hashable {
     let conditionId: Int
-    let cityName: String
     let temperature: Int
     
     var temperatureInCelcius: Int {
         return self.temperature - 273
     }
+    
     let weekday: String
     
     var conditionName: String {

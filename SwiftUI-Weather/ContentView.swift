@@ -7,34 +7,23 @@
 
 import SwiftUI
 
-
 struct ContentView: View {
-    
-    @State private var isNight = false
-    @State private var cityName = String()
     @StateObject private var viewModel = ViewModel()
     @StateObject var locationDataManager = LocationDataManager()
     
-    @State var days: [DayWeather] = []
     var body: some View {
-    
         ZStack {
-            BackgroundView(isNight: $isNight)
+            BackgroundView()
             
             VStack {
-                
-                SearchView(cityName: $cityName, days: $days, viewModel: viewModel)
+                SearchView()
                 
                 MainWeatherStatusView(imageName: "cloud.sun.fill", temperature: 25)
-
                
                 DaysView(viewModel: viewModel)
                 
-       
                 Spacer()
-                
             }
-            
         }
         .onAppear {
             let longtitude  = locationDataManager.longtitude
@@ -42,20 +31,24 @@ struct ContentView: View {
             
             Task {
                await viewModel.fetchWeatherData(longtitude: longtitude, latitude: latitude)
+                
+               await viewModel.getWeeklyWeatherData()
             }
         }
+//        .environmentObject(viewModel)
     }
 }
 
 struct DaysView: View {
-
-    @StateObject var viewModel: ViewModel
+    @ObservedObject var viewModel: ViewModel
     
     var body: some View {
         HStack {
-            ForEach(viewModel.weatherDataArray, id: \.self) { weatherData in
+            ForEach(viewModel.weeklyWeatherData, id: \.self) { weatherData in
                 
-                let day = DayWeather(dayOfWeek: weatherData.weekday, imageName: weatherData.conditionName, temperature: weatherData.temperatureInCelcius)
+                let day = DayWeather(dayOfWeek: weatherData.weekday,
+                                     imageName: weatherData.conditionName,
+                                     temperature: weatherData.temperatureInCelcius)
                 
                 WeatherDayView(day: day)
             }
@@ -64,9 +57,9 @@ struct DaysView: View {
 }
 
 struct SearchView: View {
-    @Binding var cityName: String
-    @Binding var days: [DayWeather]
-    var viewModel: ViewModel
+    @State var cityName = String()
+    @State private var isTextFieldEmpty: Bool = true
+    @EnvironmentObject var viewModel: ViewModel
     
     var body: some View {
         HStack{
@@ -78,8 +71,14 @@ struct SearchView: View {
                 .padding()
             
             Button {
-                Task {
-                    await viewModel.fetchWeatherDate(with: cityName)
+                isTextFieldEmpty = cityName.count == 0 
+                
+                if !isTextFieldEmpty {
+                    Task {
+                        await viewModel.fetchWeatherData(with: cityName)
+                    }
+                } else {
+                    print("Please enter valid city name")
                 }
                 
             } label: {
@@ -97,12 +96,10 @@ struct SearchView: View {
 }
 
 struct WeatherDayView: View {
-    
     var day: DayWeather
-    
+    @State private var isShowingSheet = false
     
     var body: some View {
-        
         VStack {
             
             Text(day.dayOfWeek)
@@ -110,6 +107,7 @@ struct WeatherDayView: View {
                 .foregroundStyle(.white)
             
             Button(action: {
+                isShowingSheet.toggle()
                 
             }, label: {
                 Image(systemName: day.imageName)
@@ -117,6 +115,10 @@ struct WeatherDayView: View {
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 40, height: 40)
+            })
+            .sheet(isPresented: $isShowingSheet, content: {
+                DetailedWeatherView(weekday: day.dayOfWeek)
+                    .presentationDetents([.large])
             })
             
             Text("\(day.temperature)°")
@@ -127,12 +129,52 @@ struct WeatherDayView: View {
     }
 }
 
-struct BackgroundView: View {
-    @Binding var isNight: Bool
+struct DetailedWeatherView: View {
+    @EnvironmentObject var viewModel: ViewModel
+    var weekday: String
+    
+    private let columns = [
+        GridItem(.flexible()),
+        GridItem(.flexible()),
+        GridItem(.flexible()),
+        GridItem(.flexible()),
+        
+    ]
     
     var body: some View {
-        LinearGradient(gradient: Gradient(colors: [isNight ? .black : .blue,
-                                                   isNight ? .gray : .lightBlue]),
+        LazyVGrid(columns: columns) {
+            ForEach(viewModel.dailyWeatherData, id: \.self) { weatherData in
+               
+                let day = DayWeather(dayOfWeek: weatherData.weekday,
+                                     imageName: weatherData.conditionName,
+                                     temperature: weatherData.temperatureInCelcius)
+                
+                VStack {
+                    Text(day.dayOfWeek)
+                        .font(.system(size: 16, weight: .medium, design: .default))
+                        .foregroundStyle(.white)
+                    
+                    Image(systemName: day.imageName)
+                        .renderingMode(.original)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 40, height: 40)
+                    
+                    Text("\(day.temperature)°")
+                        .font(.system(size: 28, weight: .medium))
+                        .foregroundStyle(.white)
+                }
+            }
+        }
+        .onAppear() {
+            viewModel.getDailyWeatherData(weekday: weekday)
+        }
+    }
+}
+
+struct BackgroundView: View {
+    var body: some View {
+        LinearGradient(gradient: Gradient(colors: [.blue, .white]),
                        startPoint: .topLeading,
                        endPoint: .bottomTrailing)
         .edgesIgnoringSafeArea(.all)
@@ -151,7 +193,6 @@ struct CityTextView: View {
 }
 
 struct MainWeatherStatusView: View {
-    
     var imageName: String
     var temperature: Int
     
@@ -171,8 +212,12 @@ struct MainWeatherStatusView: View {
     }
 }
 
-
-
-#Preview {
-    ContentView()
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView()
+    }
 }
+
+//#Preview {
+//    ContentView()
+//}
